@@ -1,6 +1,6 @@
 # gpv config
 
-Manage the configuration of a Greenplum Database on vSphere cluster. 
+Manage the configuration of a Greenplum Database on vSphere cluster.
 
 ## <a id="section2"></a>Synopsis
 
@@ -16,13 +16,13 @@ The `gpv config` command allows you to configure a Greenplum cluster on VMware v
 
 ## <a id="info"></a>Required Inputs
 
-The following table lists all the information you require in order to configure the a base virtual machine template using the `gpv` utility. Be sure you have this information available before you start with the configuration.
+The following table lists all the information that is required to deploy a Greenplum Database cluster using the `gpv` utility. Be sure you have this information available before you start the deployment.
 
 |Configuration|Description|
-|-|-| 
+|-|-|
 |**vSphere**|**Configuration parameters for vSphere**|
 |vSphere admin username|An administrator account with enough permissions to deploy the Greenplum cluster|
-|vSphere admin password|The password for the administrator account| 
+|vSphere admin password|The password for the administrator account|
 |vCenter address|The FQDN or IP address of the vCenter (do not include `https://`)|
 |Datacenter name|The virtual data center name|
 |Compute cluster name|The virtual compute cluster name|
@@ -49,7 +49,8 @@ The following table lists all the information you require in order to configure 
 |**gp-virtual-etl-bar**|**Configuration parameters for the ETL-BAR network**|
 |gp-virtual-etl-bar CIDR|The network The Classless Inter-Domain Routing (CIDR) for Extraction Transformation Load (`etl`) and/or Backup and Restore (`bar`) network. Usually this network is not routable to the database user clients, but routable to the backup or staging servers. This network allows access to all segments within the Greenplum cluster to ensure maximum throughput for heavy data movement workloads.|
 |**Virtual machine options**|**Configuration parameters for the virtual machines**|
-|base-VM-name|The name of the base virtual machine, provisioned in the next section|
+|base-template-name|The name of the provided base template virtual machine. All other virtual machines will be cloned and configured based on this base template virtual machine.|
+|base-VM-name|The name of the base virtual machine, provisioned in the next section. This virtual machine will be cloned from `base-template-name` virtual machine and the OS will be configured further to run Greenplum Database. This is an intermediate virtual machine and can be deleted after the deployment.|
 |boot password for the root user|The password for the `root` user on the base virtual machine|
 |boot password for the gpadmin user|The password for the `gpadmin` user on the base virtual machine. The `gpadmin` user is required for the Greenplum cluster initialization and management.|
 |Number of primary segment VMs|The number of virtual machines for the primary segments. For `mirrored`, use `number of primary segments * 2 + 2`. For `mirrorless`, use `number of primary segments + 1`.|
@@ -62,7 +63,7 @@ The available sub-commands for `gpv config` are `init`, `list`, and `set`.
 
 ### <a id="init"></a>init
 
-Initialize a configuration interactively or import an external configuration from a file. The `gpv config init` command creates the configuration for deploying a Greenplum Database cluster. You may speficy the configuration parameters entering each value interactively, or from an existing configuration yaml file, `file_name`.
+Initialize a configuration interactively or import an external configuration from a file. The `gpv config init` command creates the configuration for deploying a Greenplum Database cluster. You may specify the configuration parameters entering each value interactively, or from an existing configuration yaml file, `file_name`.
 
 ```
 gpv config init [<file_name>]
@@ -70,13 +71,13 @@ gpv config init [<file_name>]
 
 #### <a id="ex_init"></a>Examples
 
-Start a new configuration from scratch: 
+Start a new configuration from scratch:
 
 ```
 gpv config init
 ```
 
-Import an existing configuration from a file: 
+Import an existing configuration from a file:
 
 ```
 gpv config init /tmp/config.yaml
@@ -88,7 +89,7 @@ List the current configuration settings. The `gpv config list` command displays 
 
 ### <a id="set"></a>set
 
-Set an individual configuration setting. 
+Set an individual configuration setting.
 
 ```
 gpv config set database <setting>
@@ -113,10 +114,10 @@ gpv config set database <setting>
 Where `setting` can be one of the following:
 
 deployment-type <type_name>
-:   Specifies whether the Greenplum deployment uses mirror segments or not. Valid values of `<type_name>` include `mirrored` and `mirrorless`. For example: `gpv config set database deployment-type mirrored`. 
+:   Specifies whether the Greenplum deployment uses mirror segments or not. Valid values of `<type_name>` include `mirrored` and `mirrorless`. For example: `gpv config set database deployment-type mirrored`.
 
 prefix <prefix_name>
-:   Specifies a label which serves as a prefix for the names of the resource pool and the virtual machines in the Greenplum cluster. For example, `gpv config set database prefix gpdb` prepends `gpdb` to virtual machines and resource pool names.
+:   Specifies a label to serve as a prefix for the names of the resource pool and the virtual machines in the Greenplum cluster. For example: `gpv config set database prefix gpdb` prepends `gpdb-` to virtual machines and resource pool names.
 
 #### <a id="network-base"></a>network base-vm
 
@@ -129,7 +130,7 @@ gpv config set network base-vm <setting>
 Where `setting` can be one of the following:
 - `gateway-ip <IP>`: Set the gateway IP address for the base virtual machine when `network-type` is set to `static`. For example: `gpv config set network base-vm gateway-ip 10.0.0.1`
 - `ip <IP>`: Set the static IP address for the base virtual machine when `network-type` is set to `static`. For example: `gpv config set network base-vm ip 10.0.0.5`.
-- `netmask <NETMASK>`: Set the netmask for the base virtual machine when network-type is set to `static`. For example: `gpv config set network base-vm netmask 255.255.255.0`.
+- `netmask <NETMASK>`: Set the netmask for the base virtual machine when `network-type` is set to `static`. For example: `gpv config set network base-vm netmask 255.255.255.0`.
 - `network-type <TYPE>`: Set the network type for base virtual machine. The possible values are `static` and `dhcp`. For example: `gpv config set network base-vm network-type dhcp`.
 
 #### <a id="network-etl"></a>network gp-virtual-etl-bar
@@ -168,7 +169,7 @@ Set the CIDR to be used by the `gp-virtual-internal` network. For example: `gpv 
 
 #### <a id="vm"></a>vm
 
-Configure individual settings for all virtual machines in the cluster. 
+Configure individual settings for all virtual machines in the cluster.
 
 ```
 gpv config set vm <setting>
@@ -177,13 +178,16 @@ gpv config set vm <setting>
 Where `setting` can be one of the following:
 
 base-name <base_VM_name>
-:    Set the name of the base virtual machine to use during configuring and deploying Greenplum on vSphere.
+:    Set the name of the intermediate base virtual machine to use during configuring and deploying Greenplum on vSphere.
+
+base-template <base_template_name>
+:    Set the name of the base template to be cloned as the base virtual machine.
 
 gpadmin-password
 :    Set the guest operating system password for `gpadmin` user. The utility prompts you to enter a password when you enter this command.
 
 primary-segment-vm-count <number_of_segment_vms>
-:    Set the number of virtual machines to house primary segments. For example: `gpv config set vm primary-segment-vm-count 64`. 
+:    Set the number of virtual machines to house primary segments. For example: `gpv config set vm primary-segment-vm-count 64`.
 
 root-password
 :    Set the guest operating system password for `root` user. The utility prompts you to enter a password when you enter this command.
